@@ -8,7 +8,7 @@ This is the single setup reference for running Post Studio locally.
 | --- | --- | --- |
 | LinkedIn + X writing | Ollama | `gemma3:4b` |
 | Local image generation | Draw Things CLI | `flux_2_klein_4b_q8p.ckpt` |
-| Web app | Next.js + React | Node.js 22+ |
+| Web app | Next.js + React | Node.js 22.12+ |
 | LinkedIn publishing | LinkedIn API | Member OAuth token |
 | X publishing | X web composer | Free / no API token |
 
@@ -16,7 +16,7 @@ This is the single setup reference for running Post Studio locally.
 
 - macOS for the included Draw Things local-image workflow
 - Homebrew
-- Node.js 22 or newer
+- Node.js 22.12 or newer
 - Internet connection for first-time package/model downloads
 - Enough free disk space for local models (allow roughly 10+ GB; model sizes can change)
 
