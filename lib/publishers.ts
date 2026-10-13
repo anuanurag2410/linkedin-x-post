@@ -41,6 +41,12 @@ async function resolveLinkedInAuthor(accessToken: string) {
   const raw = await response.text();
 
   if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error(
+        "LinkedIn access token is invalid or expired. Generate a fresh member access token and replace LINKEDIN_ACCESS_TOKEN in your local .env.local."
+      );
+    }
+
     throw new Error(
       `LinkedIn userinfo returned ${response.status}: ${safeErrorDetail(raw)}`
     );
@@ -228,6 +234,16 @@ export async function publishLinkedIn(
 
     if (!response.ok) {
       const detail = safeErrorDetail(await response.text());
+
+      if (response.status === 401) {
+        return {
+          platform: "linkedin",
+          success: false,
+          error:
+            "LinkedIn access token is invalid or expired. Generate a fresh member access token and update your local .env.local.",
+        };
+      }
+
       return {
         platform: "linkedin",
         success: false,
