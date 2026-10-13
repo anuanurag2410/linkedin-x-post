@@ -141,11 +141,135 @@ function getFreePort() {
   });
 }
 
-function logStream(name) {
-  const logDir = path.join(app.getPath("userData"), "logs");
-  fs.mkdirSync(logDir, { recursive: true });
+function logsDir() {
+  const dir = path.join(app.getPath("userData"), "logs");
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
 
-  return fs.openSync(path.join(logDir, name), "a");
+function logPath(name) {
+  return path.join(logsDir(), name);
+}
+
+function logStream(name) {
+  return fs.openSync(logPath(name), "a");
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function statusHtml(title, message, error = false) {
+  const accent = error ? "#ff6b6b" : "#f6c915";
+  const safeTitle = escapeHtml(title);
+  const safeMessage = escapeHtml(message);
+
+  return `data:text/html;charset=UTF-8,${encodeURIComponent(`
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="color-scheme" content="dark" />
+    <title>Post Studio</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(circle at 20% 10%, rgba(246,201,21,.08), transparent 30%),
+          #070707;
+        color: #f5f5f5;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      .card {
+        width: min(560px, calc(100vw - 48px));
+        padding: 34px;
+        border: 1px solid #292929;
+        border-radius: 20px;
+        background: #0d0d0d;
+        box-shadow: 0 24px 80px rgba(0,0,0,.45);
+      }
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 26px;
+        color: #f6c915;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+      }
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: ${accent};
+        box-shadow: 0 0 18px ${accent};
+      }
+      h1 {
+        margin: 0 0 10px;
+        font-size: 28px;
+        line-height: 1.15;
+      }
+      p {
+        margin: 0;
+        color: #aaa;
+        font-size: 14px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+      }
+      .bar {
+        height: 3px;
+        margin-top: 28px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: #1d1d1d;
+      }
+      .bar::after {
+        content: "";
+        display: block;
+        width: 38%;
+        height: 100%;
+        background: ${accent};
+        animation: move 1.1s ease-in-out infinite alternate;
+      }
+      .error .bar::after { animation: none; width: 100%; }
+      .hint {
+        margin-top: 18px;
+        color: #686868;
+        font-size: 11px;
+      }
+      @keyframes move {
+        from { transform: translateX(-10%); }
+        to { transform: translateX(190%); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card ${error ? "error" : ""}">
+      <div class="brand"><span class="dot"></span> Data With Anurag · Post Studio</div>
+      <h1>${safeTitle}</h1>
+      <p>${safeMessage}</p>
+      <div class="bar"></div>
+      ${error ? `<div class="hint">Use Post Studio → Open Logs Folder for diagnostics.</div>` : ""}
+    </div>
+  </body>
+</html>
+`)}`;
+}
+
+async function showStatus(title, message, error = false) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  await mainWindow.loadURL(statusHtml(title, message, error));
 }
 
 async function ensureOllama(env) {
@@ -215,13 +339,14 @@ async function startPackagedNextServer(env) {
 
   if (!fs.existsSync(serverPath)) {
     throw new Error(
-      "The packaged Next.js runtime is missing. Rebuild the desktop app."
+      `The packaged Next.js runtime is missing at: ${serverPath}`
     );
   }
 
   const port = await getFreePort();
   const url = `http://127.0.0.1:${port}`;
-  const log = logStream("next.log");
+  const nextLogPath = logPath("next.log");
+  const log = fs.openSync(nextLogPath, "a");
 
   nextProcess = spawn(process.execPath, [serverPath], {
     cwd: runtimeDir,
@@ -235,19 +360,47 @@ async function startPackagedNextServer(env) {
     stdio: ["ignore", log, log],
   });
 
+  let spawnError = null;
+
   nextProcess.on("error", (error) => {
+    spawnError = error;
     console.error("Next.js server process error:", error);
   });
 
-  const ready = await waitForUrl(url, 60000);
+  const started = Date.now();
 
-  if (!ready) {
-    throw new Error(
-      "The Post Studio local server did not start. Check the desktop logs folder."
-    );
+  while (Date.now() - started < 60000) {
+    if (spawnError) {
+      throw new Error(
+        `The embedded Post Studio server could not start: ${spawnError.message}`
+      );
+    }
+
+    if (await isUrlReady(url)) {
+      return url;
+    }
+
+    if (nextProcess.exitCode !== null) {
+      let tail = "";
+
+      try {
+        const raw = fs.readFileSync(nextLogPath, "utf8");
+        tail = raw.split(/\r?\n/).slice(-12).join("\n").trim();
+      } catch {}
+
+      throw new Error(
+        `The embedded Post Studio server exited with code ${nextProcess.exitCode}.${
+          tail ? `\n\n${tail}` : ""
+        }`
+      );
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 400));
   }
 
-  return url;
+  throw new Error(
+    `The Post Studio local server did not become ready within 60 seconds. Logs: ${nextLogPath}`
+  );
 }
 
 function installApplicationMenu() {
@@ -294,9 +447,7 @@ function installApplicationMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
-function createWindow(url) {
-  appUrl = url;
-
+function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1440,
     height: 940,
@@ -322,16 +473,14 @@ function createWindow(url) {
   });
 
   mainWindow.webContents.on("will-navigate", (event, targetUrl) => {
-    const current = mainWindow?.webContents.getURL() || "";
+    if (!/^https?:\/\//i.test(targetUrl)) return;
 
-    if (targetUrl !== current && /^https?:\/\//i.test(targetUrl)) {
-      const currentOrigin = new URL(current).origin;
-      const targetOrigin = new URL(targetUrl).origin;
+    const targetOrigin = new URL(targetUrl).origin;
+    const appOrigin = appUrl ? new URL(appUrl).origin : "";
 
-      if (currentOrigin !== targetOrigin) {
-        event.preventDefault();
-        void shell.openExternal(targetUrl);
-      }
+    if (!appOrigin || targetOrigin !== appOrigin) {
+      event.preventDefault();
+      void shell.openExternal(targetUrl);
     }
   });
 
@@ -339,7 +488,10 @@ function createWindow(url) {
     mainWindow = null;
   });
 
-  void mainWindow.loadURL(url);
+  void showStatus(
+    "Starting Post Studio",
+    "Preparing your local AI workspace…"
+  );
 }
 
 function stopChildProcesses() {
@@ -358,11 +510,17 @@ function stopChildProcesses() {
 app.whenReady().then(async () => {
   app.setAppUserModelId("com.datawithanurag.poststudio");
   installApplicationMenu();
+  createWindow();
 
   try {
     let url;
 
     if (isDev) {
+      await showStatus(
+        "Connecting to development server",
+        "Waiting for http://127.0.0.1:3000…"
+      );
+
       url = process.env.POST_STUDIO_DEV_URL || "http://127.0.0.1:3000";
 
       const ready = await waitForUrl(url, 60000);
@@ -373,36 +531,62 @@ app.whenReady().then(async () => {
       }
     } else {
       const env = getRuntimeEnv();
+
+      await showStatus(
+        "Starting local AI",
+        "Checking Ollama on this computer…"
+      );
       await ensureOllama(env);
+
+      await showStatus(
+        "Checking AI model",
+        `Verifying ${env.OLLAMA_MODEL || "gemma3:4b"}…`
+      );
       await ensureConfiguredModel(env);
+
+      await showStatus(
+        "Starting Post Studio",
+        "Launching the embedded application server…"
+      );
       url = await startPackagedNextServer(env);
     }
 
-    createWindow(url);
+    appUrl = url;
+    await mainWindow.loadURL(url);
+    mainWindow.show();
+    mainWindow.focus();
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Post Studio could not start.";
 
     console.error(error);
 
-    await dialog.showMessageBox({
+    await showStatus("Post Studio could not start", message, true);
+
+    await dialog.showMessageBox(mainWindow, {
       type: "error",
       title: "Post Studio could not start",
       message,
       detail: isDev
         ? "Check the terminal output."
-        : `Desktop config: ${desktopEnvPath()}\nLogs: ${path.join(
-            app.getPath("userData"),
-            "logs"
-          )}`,
+        : `Desktop config: ${desktopEnvPath()}\nLogs: ${logsDir()}`,
+      buttons: ["OK", "Open Logs Folder"],
+      defaultId: 0,
+      cancelId: 0,
+    }).then((result) => {
+      if (result.response === 1) {
+        void shell.openPath(logsDir());
+      }
     });
-
-    app.quit();
   }
 
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0 && appUrl) {
-      createWindow(appUrl);
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+
+      if (appUrl) {
+        void mainWindow.loadURL(appUrl);
+      }
     }
   });
 });
