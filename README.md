@@ -975,12 +975,26 @@ After adding/replacing the logo:
 
 ### LinkedIn publishing fails
 
+Check the development token safely without printing it:
+
+```bash
+npm run linkedin:check
+```
+
+The checker calls LinkedIn's `/v2/userinfo` endpoint using the token from the repo's local `.env.local`.
+
 Check:
 
-- `LINKEDIN_ACCESS_TOKEN` exists in `.env.local`
-- the token has not expired
+- `LINKEDIN_ACCESS_TOKEN` exists in the correct local `.env.local`
+- the token has not expired or been revoked
 - the token has the necessary publishing permission
 - the post has been approved in the UI
+
+For `npm run desktop`, the app reads the repository's `.env.local`.
+
+For an installed DMG/EXE, use **Post Studio → Open Local Config Folder** and edit the `.env.local` stored there. The packaged app intentionally does not read secrets from the cloned GitHub repository.
+
+If LinkedIn returns HTTP 401 / `INVALID_ACCESS_TOKEN`, generate a fresh member token and replace the old token. Do not reuse an exposed token.
 
 ### X button is disabled
 
