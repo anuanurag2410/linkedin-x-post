@@ -352,10 +352,26 @@ export async function publishLinkedIn(
       };
     }
 
+    const postId = response.headers.get("x-restli-id") || "";
+
+    if (response.status !== 201 || !postId) {
+      return {
+        platform: "linkedin",
+        success: false,
+        error:
+          `LinkedIn did not return the expected 201 Created response with a post ID. Received HTTP ${response.status}${postId ? `, Post ID: ${postId}` : ""}.`,
+      };
+    }
+
+    console.log("LinkedIn post created:", {
+      postId,
+      imageAttached: Boolean(mediaContent),
+    });
+
     return {
       platform: "linkedin",
       success: true,
-      id: response.headers.get("x-restli-id") || undefined,
+      id: postId,
       imageAttached: Boolean(mediaContent),
     };
   } catch (error) {
