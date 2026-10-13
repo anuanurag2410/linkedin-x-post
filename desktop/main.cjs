@@ -362,6 +362,7 @@ async function startPackagedNextServer(env) {
       PORT: String(port),
       HOSTNAME: "127.0.0.1",
       NODE_PATH: nodePath,
+      POST_STUDIO_ENV_FILE: desktopEnvPath(),
     },
     stdio: ["ignore", log, log],
   });
