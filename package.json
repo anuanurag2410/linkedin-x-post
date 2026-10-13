@@ -10,10 +10,11 @@
     "setup:local": "bash scripts/setup-local-ai.sh",
     "ai:check": "bash scripts/check-local-ai.sh",
     "dev:all": "bash scripts/dev-all.sh",
-    "desktop": "node scripts/desktop-dev.cjs",
-    "desktop:build": "npm run build && electron-builder --publish never",
-    "desktop:build:mac": "npm run build && electron-builder --mac dmg --universal --publish never",
-    "desktop:build:win": "npm run build && electron-builder --win nsis --x64 --publish never"
+    "desktop": "npm run check:node && node scripts/desktop-dev.cjs",
+    "desktop:build": "npm run check:node && npm run build && electron-builder --publish never",
+    "desktop:build:mac": "npm run check:node && npm run build && electron-builder --mac dmg --universal --publish never",
+    "desktop:build:win": "npm run check:node && npm run build && electron-builder --win nsis --x64 --publish never",
+    "check:node": "node scripts/check-node.cjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
@@ -93,5 +94,8 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Post Studio"
     }
+  },
+  "engines": {
+    "node": ">=22.12.0"
   }
 }
