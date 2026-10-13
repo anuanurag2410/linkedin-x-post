@@ -135,11 +135,13 @@ Post Studio can also be packaged as a native desktop application with Electron.
 After a GitHub Release is built, the README links directly to:
 
 ```text
-Post-Studio-macOS.dmg
+Post-Studio-macOS.dmg (Apple Silicon)
 Post-Studio-Windows.exe
 ```
 
 ### Desktop prerequisites
+
+The current macOS installer targets Apple Silicon (M1/M2/M3/M4 and newer). This avoids universal-binary merge issues with architecture-specific native dependencies such as Sharp.
 
 The installers do not bundle multi-GB AI models.
 
