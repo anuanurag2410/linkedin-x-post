@@ -107,6 +107,10 @@ export default function Home() {
     name: "",
     error: "",
   });
+  const [linkedinConfigOpen, setLinkedinConfigOpen] = useState(false);
+  const [linkedinTokenInput, setLinkedinTokenInput] = useState("");
+  const [linkedinSaving, setLinkedinSaving] = useState(false);
+  const [linkedinConfigSource, setLinkedinConfigSource] = useState("");
   const [xOpened, setXOpened] = useState(false);
   const [published, setPublished] = useState<ApprovalState>({
     linkedin: false,
@@ -138,6 +142,68 @@ export default function Home() {
     () => approval.linkedin && approval.x && hasDrafts,
     [approval, hasDrafts]
   );
+
+  async function loadLinkedInConfigInfo() {
+    try {
+      const response = await fetch("/api/linkedin/settings", {
+        method: "GET",
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
+
+      const data = await response.json();
+      setLinkedinConfigSource(String(data.source || ""));
+    } catch {
+      setLinkedinConfigSource("");
+    }
+  }
+
+  async function saveLinkedInToken() {
+    const token = linkedinTokenInput.trim();
+
+    if (!token) {
+      setError("Paste your LinkedIn member access token first.");
+      return;
+    }
+
+    setLinkedinSaving(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/linkedin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Could not save LinkedIn token.");
+      }
+
+      setLinkedinTokenInput("");
+      setLinkedinConfigOpen(false);
+      setLinkedinStatus({
+        checking: false,
+        connected: Boolean(data.status?.connected),
+        name: String(data.status?.name || ""),
+        error: String(data.status?.error || ""),
+      });
+      setPublishMessage(
+        data.status?.name
+          ? `LinkedIn connected as ${data.status.name}.`
+          : "LinkedIn connected successfully."
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Could not save LinkedIn token."
+      );
+      await refreshLinkedInStatus();
+    } finally {
+      setLinkedinSaving(false);
+    }
+  }
 
   async function refreshLinkedInStatus() {
     setLinkedinStatus((current) => ({ ...current, checking: true }));
@@ -207,6 +273,7 @@ export default function Home() {
   useEffect(() => {
     void refreshTopicLibrary();
     void refreshLinkedInStatus();
+    void loadLinkedInConfigInfo();
   }, []);
 
   async function generate(mode: GenerationMode = "both", presetFeedback = "") {
@@ -994,9 +1061,40 @@ export default function Home() {
               <RefreshCw size={12} className={linkedinStatus.checking ? "spin" : ""} />
               Check
             </button>
+            <button
+              type="button"
+              onClick={() => setLinkedinConfigOpen((current) => !current)}
+            >
+              {linkedinConfigOpen ? "Close" : "Configure"}
+            </button>
           </div>
           {!linkedinStatus.connected && !linkedinStatus.checking && linkedinStatus.error ? (
             <small className="linkedin-error">{linkedinStatus.error}</small>
+          ) : null}
+          {linkedinConfigOpen ? (
+            <div className="linkedin-config-panel">
+              <strong>LinkedIn access token</strong>
+              <span>
+                {linkedinConfigSource === "desktop"
+                  ? "This saves to the installed Post Studio desktop config."
+                  : "This saves to this project's .env.local."}
+              </span>
+              <input
+                type="password"
+                value={linkedinTokenInput}
+                onChange={(event) => setLinkedinTokenInput(event.target.value)}
+                placeholder="Paste LinkedIn member access token"
+                autoComplete="off"
+              />
+              <button
+                type="button"
+                onClick={() => void saveLinkedInToken()}
+                disabled={linkedinSaving || !linkedinTokenInput.trim()}
+              >
+                <Check size={12} />
+                {linkedinSaving ? "Saving & verifying…" : "Save & Verify"}
+              </button>
+            </div>
           ) : null}
         </div>
 
