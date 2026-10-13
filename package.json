@@ -10,7 +10,7 @@
     "setup:local": "bash scripts/setup-local-ai.sh",
     "ai:check": "bash scripts/check-local-ai.sh",
     "dev:all": "bash scripts/dev-all.sh",
-    "desktop": "bash scripts/desktop-dev.sh",
+    "desktop": "node scripts/desktop-dev.cjs",
     "desktop:build": "npm run build && electron-builder --publish never",
     "desktop:build:mac": "npm run build && electron-builder --mac dmg --universal --publish never",
     "desktop:build:win": "npm run build && electron-builder --win nsis --x64 --publish never"
