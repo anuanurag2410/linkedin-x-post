@@ -14,7 +14,8 @@
     "desktop:build": "npm run check:node && npm run build && electron-builder --publish never",
     "desktop:build:mac": "npm run check:node && npm run build && electron-builder --mac dmg --arm64 --publish never",
     "desktop:build:win": "npm run check:node && npm run build && electron-builder --win nsis --x64 --publish never",
-    "check:node": "node scripts/check-node.cjs"
+    "check:node": "node scripts/check-node.cjs",
+    "linkedin:check": "node scripts/check-linkedin.cjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
