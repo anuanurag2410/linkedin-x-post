@@ -348,6 +348,11 @@ async function startPackagedNextServer(env) {
   const nextLogPath = logPath("next.log");
   const log = fs.openSync(nextLogPath, "a");
 
+  const packagedNodeModules = path.join(app.getAppPath(), "node_modules");
+  const nodePath = [packagedNodeModules, env.NODE_PATH || ""]
+    .filter(Boolean)
+    .join(path.delimiter);
+
   nextProcess = spawn(process.execPath, [serverPath], {
     cwd: runtimeDir,
     env: {
@@ -356,6 +361,7 @@ async function startPackagedNextServer(env) {
       NODE_ENV: "production",
       PORT: String(port),
       HOSTNAME: "127.0.0.1",
+      NODE_PATH: nodePath,
     },
     stdio: ["ignore", log, log],
   });
