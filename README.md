@@ -864,6 +864,24 @@ REQUIREMENTS.md                  compact requirements reference
 
 ## 22. Troubleshooting
 
+### Installed desktop app says `Cannot find module 'next'`
+
+Older desktop builds could start the embedded `.next/standalone/server.js` without exposing Electron's packaged production dependencies to that child process.
+
+Pull the latest version and rebuild:
+
+```bash
+git pull
+rm -rf dist
+npm run desktop:build:mac
+```
+
+Then replace the previously installed Post Studio application with the newly generated DMG.
+
+The desktop launcher now sets `NODE_PATH` to Electron's packaged `node_modules`, allowing the embedded Next.js server to resolve `next` and its production dependencies.
+
+Your desktop `.env.local` under Application Support is not removed when you replace the application, so local credentials remain separate from the installer.
+
 ### Electron fails with `ERR_REQUIRE_ESM`
 
 If Electron installation shows an error involving `@electron/get`, first check:
