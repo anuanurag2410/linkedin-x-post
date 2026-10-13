@@ -350,35 +350,48 @@ export default function Home() {
     setError("");
   }
 
-  async function publishLinkedIn(openXAfter = false) {
+  async function publishLinkedIn(openXToo = false) {
     if (!approval.linkedin) {
       setError("Approve the LinkedIn draft before publishing it.");
       return;
     }
 
-    if (openXAfter && !approval.x) {
+    if (imageLoading) {
+      setError("Wait for the image generation to finish before publishing.");
+      return;
+    }
+
+    if (openXToo && !approval.x) {
       setError("Approve the X draft before using Publish LinkedIn + Open X.");
       return;
     }
 
-    if (openXAfter && content.x.length > 280) {
+    if (openXToo && content.x.length > 280) {
       setError("The X draft is over 280 characters. Shorten it first.");
       return;
     }
 
     const confirmed = window.confirm(
-      openXAfter
-        ? "Publish the approved LinkedIn post now, then open the approved X draft in X for your final click?"
+      openXToo
+        ? "Open the approved X draft now and publish the approved LinkedIn post? LinkedIn goes live immediately; you will click Post manually in X."
         : "Publish this approved LinkedIn draft now? This goes live immediately."
     );
 
     if (!confirmed) return;
 
-    const xWindow = openXAfter ? window.open("about:blank", "_blank") : null;
-    if (xWindow) xWindow.opener = null;
+    // Open X immediately while this click still has direct user interaction.
+    // This is more reliable in Electron than waiting for the LinkedIn API first.
+    if (openXToo) {
+      window.open(buildXIntentUrl(), "_blank", "noopener,noreferrer");
+      setXOpened(true);
+    }
 
-    setPublishingTarget(openXAfter ? "both" : "linkedin");
-    setPublishMessage("");
+    setPublishingTarget(openXToo ? "both" : "linkedin");
+    setPublishMessage(
+      openXToo
+        ? "X composer opened. Publishing LinkedIn…"
+        : "Publishing LinkedIn…"
+    );
     setError("");
 
     const snapshot = {
@@ -388,7 +401,7 @@ export default function Home() {
       x: content.x,
       imageChoice,
       hasImage: Boolean(imageUrl),
-      target: openXAfter ? "linkedin+x-composer" : "linkedin",
+      target: openXToo ? "linkedin+x-composer" : "linkedin",
       approvedAt: new Date().toISOString(),
     };
 
@@ -415,36 +428,27 @@ export default function Home() {
       const data = await response.json();
 
       if (!response.ok) {
-        if (xWindow) xWindow.close();
         throw new Error(data.error || "LinkedIn publishing failed.");
       }
 
       const linkedInResult = (data.results || []).find(
         (item: { platform: string; success: boolean }) =>
-          item.platform === "linkedin" && item.success
+          item.platform === "linkedin"
       );
 
-      if (!linkedInResult) {
-        if (xWindow) xWindow.close();
-        throw new Error("LinkedIn publishing failed.");
+      if (!linkedInResult?.success) {
+        throw new Error(
+          linkedInResult?.error || "LinkedIn publishing failed."
+        );
       }
 
       setPublished((current) => ({ ...current, linkedin: true }));
 
-      if (openXAfter) {
-        const xUrl = buildXIntentUrl();
-
-        if (xWindow) {
-          xWindow.location.href = xUrl;
-        } else {
-          window.open(xUrl, "_blank", "noopener,noreferrer");
-        }
-
-        setXOpened(true);
+      if (openXToo) {
         setPublishMessage(
           linkedInResult.imageAttached
-            ? "LinkedIn published with the image. X composer opened with your text; review and click Post there."
-            : "LinkedIn published. X composer opened with your text; review and click Post there."
+            ? "LinkedIn published with the image. X is open with your approved text — click Post there."
+            : "LinkedIn published successfully. X is open with your approved text — click Post there."
         );
       } else {
         setPublishMessage(
@@ -454,7 +458,20 @@ export default function Home() {
         );
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Publishing failed.");
+      const message =
+        err instanceof Error ? err.message : "LinkedIn publishing failed.";
+
+      if (openXToo) {
+        setError(
+          `X was opened successfully, but LinkedIn was not published: ${message}`
+        );
+        setPublishMessage(
+          "X composer is open. LinkedIn needs attention before you retry it."
+        );
+      } else {
+        setError(message);
+        setPublishMessage("");
+      }
     } finally {
       setPublishingTarget(null);
     }
@@ -896,7 +913,8 @@ export default function Home() {
             disabled={
               !approval.linkedin ||
               published.linkedin ||
-              Boolean(publishingTarget)
+              Boolean(publishingTarget) ||
+              imageLoading
             }
             onClick={() => publishLinkedIn(false)}
             type="button"
@@ -940,7 +958,8 @@ export default function Home() {
               !readyToPublish ||
               published.linkedin ||
               xChars > 280 ||
-              Boolean(publishingTarget)
+              Boolean(publishingTarget) ||
+              imageLoading
             }
             onClick={() => publishLinkedIn(true)}
             type="button"
