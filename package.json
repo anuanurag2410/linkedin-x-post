@@ -9,7 +9,11 @@
     "lint": "next lint",
     "setup:local": "bash scripts/setup-local-ai.sh",
     "ai:check": "bash scripts/check-local-ai.sh",
-    "dev:all": "bash scripts/dev-all.sh"
+    "dev:all": "bash scripts/dev-all.sh",
+    "desktop": "bash scripts/desktop-dev.sh",
+    "desktop:build": "npm run build && electron-builder --publish never",
+    "desktop:build:mac": "npm run build && electron-builder --mac dmg --universal --publish never",
+    "desktop:build:win": "npm run build && electron-builder --win nsis --x64 --publish never"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
@@ -24,6 +28,70 @@
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "^15.5.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "electron": "44.7.0",
+    "electron-builder": "26.15.3"
+  },
+  "main": "desktop/main.cjs",
+  "build": {
+    "appId": "com.datawithanurag.poststudio",
+    "productName": "Post Studio",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "desktop/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": ".next/standalone",
+        "to": "app-runtime"
+      },
+      {
+        "from": ".next/static",
+        "to": "app-runtime/.next/static"
+      },
+      {
+        "from": "public",
+        "to": "app-runtime/public"
+      },
+      {
+        "from": ".env.example",
+        "to": ".env.example"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "icon": "public/brand/data-with-anurag-logo.png",
+      "artifactName": "Post-Studio-macOS.${ext}"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "public/brand/data-with-anurag-logo.png",
+      "artifactName": "Post-Studio-Windows.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Post Studio"
+    }
   }
 }
