@@ -126,6 +126,62 @@ No X API key, OAuth token, billing, or paid API access is required. The app open
 
 Generated/uploaded images are not automatically attached to X in this free flow.
 
+## Desktop installers
+
+Post Studio can also be packaged as a native desktop application with Electron.
+
+### Public downloads
+
+After a GitHub Release is built, the README links directly to:
+
+```text
+Post-Studio-macOS.dmg
+Post-Studio-Windows.exe
+```
+
+### Desktop prerequisites
+
+The installers do not bundle multi-GB AI models.
+
+Both platforms require Ollama and the configured text model:
+
+```bash
+ollama pull gemma3:4b
+```
+
+The desktop app starts the Ollama server automatically when needed.
+
+Local Draw Things image generation is currently macOS-only. Windows users can use text generation plus the upload/no-image workflow.
+
+### Desktop development
+
+```bash
+npm install
+npm run desktop
+```
+
+### Build macOS
+
+```bash
+npm run desktop:build:mac
+```
+
+### Build Windows
+
+```bash
+npm run desktop:build:win
+```
+
+For public releases, `.github/workflows/desktop-release.yml` builds both platforms and attaches them to GitHub Releases.
+
+Packaged apps keep local secrets in a user-specific `.env.local`, accessible from:
+
+```text
+Post Studio → Open Local Config Folder
+```
+
+The installers are unsigned until code-signing certificates are configured, so operating-system security warnings can appear on first launch.
+
 ## Security
 
 - `.env.local` is ignored by git.
