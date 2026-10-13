@@ -108,7 +108,7 @@ export async function POST(request: Request) {
         : await generateWithOllama({
             system: instructions,
             user: input,
-            timeoutMs: 90000,
+            timeoutMs: 75000,
           });
 
     let parsed = extractJson(raw);
@@ -176,7 +176,7 @@ export async function POST(request: Request) {
           : await generateWithOllama({
               system: recoveryInstructions,
               user: recoveryInput,
-              timeoutMs: 45000,
+              timeoutMs: 30000,
             });
 
       const recoveredParsed = extractJson(raw);
