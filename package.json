@@ -73,7 +73,7 @@
         }
       ],
       "icon": "public/brand/data-with-anurag-logo.png",
-      "artifactName": "Post-Studio-macOS-Apple-Silicon.${ext}"
+      "artifactName": "Post-Studio-macOS.${ext}"
     },
     "win": {
       "target": [
