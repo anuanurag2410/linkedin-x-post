@@ -1,5 +1,29 @@
 # Post Studio — LinkedIn + X Creator Growth Copilot
 
+## ⬇️ Download the Desktop App
+
+| Platform | Installer |
+| --- | --- |
+| **macOS** | [Download Post Studio (.dmg)](https://github.com/anuanurag2410/linkedin-x-post/releases/latest/download/Post-Studio-macOS.dmg) |
+| **Windows** | [Download Post Studio (.exe)](https://github.com/anuanurag2410/linkedin-x-post/releases/latest/download/Post-Studio-Windows.exe) |
+
+> The download links become active after the first GitHub Release is published. The desktop app is currently unsigned, so macOS Gatekeeper or Windows SmartScreen may show a first-launch warning.
+
+### Desktop prerequisites
+
+The desktop installer contains Post Studio itself, but the local AI model is intentionally not bundled because it is several GB.
+
+Before launching the desktop app:
+
+- install **Ollama**
+- make sure `gemma3:4b` is available with `ollama pull gemma3:4b`
+- on macOS, install Draw Things CLI only if you want local AI image generation
+- on Windows, use text generation plus **Upload mine** / **No image** for now because the default Draw Things image workflow is macOS-only
+
+Once Ollama is installed, Post Studio starts the Ollama server automatically when needed.
+
+---
+
 Post Studio turns a creator's real expertise into platform-native LinkedIn and X content, optional AI-generated visuals, an approval workflow, direct LinkedIn publishing, and a free X web-composer flow.
 
 The default project is branded for **Data With Anurag** and optimized around:
@@ -33,6 +57,7 @@ The app is designed so another creator can fork the repository, replace one crea
 | Capability | Default |
 | --- | --- |
 | Web app | Next.js 15 + React 19 + TypeScript |
+| Desktop app | Electron |
 | Text AI | Ollama |
 | Default text model | `gemma3:4b` |
 | Image AI | Draw Things CLI |
@@ -639,6 +664,93 @@ Editing an approved draft removes its approval so you do not accidentally publis
 
 ---
 
+## Desktop development and installers
+
+### Open Post Studio as a desktop app while developing
+
+After installing dependencies:
+
+```bash
+npm install
+npm run desktop
+```
+
+This starts Ollama when needed, starts the Next.js development server and opens Post Studio in a native Electron window.
+
+### Build an installer locally
+
+On macOS:
+
+```bash
+npm run desktop:build:mac
+```
+
+Output:
+
+```text
+dist/Post-Studio-macOS.dmg
+```
+
+On Windows:
+
+```powershell
+npm run desktop:build:win
+```
+
+Output:
+
+```text
+dist/Post-Studio-Windows.exe
+```
+
+A macOS machine should build the DMG and a Windows machine should build the EXE. For public releases, GitHub Actions handles both platforms automatically.
+
+### Publish both installers with GitHub Actions
+
+The release workflow lives at:
+
+```text
+.github/workflows/desktop-release.yml
+```
+
+Push a version tag:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+GitHub Actions will:
+
+1. build the universal macOS DMG on macOS
+2. build the Windows x64 installer on Windows
+3. upload both build artifacts
+4. create/update the GitHub Release
+5. attach them with the fixed filenames used by the download links at the top of this README
+
+You can also run **Build Desktop Release** manually from the repository's **Actions** tab and provide a release tag.
+
+### Desktop local configuration
+
+Packaged desktop builds keep secrets outside the application bundle.
+
+Inside the desktop app use:
+
+```text
+Post Studio → Open Local Config Folder
+```
+
+The folder contains a local `.env.local` file. Add credentials there when needed, for example:
+
+```env
+LINKEDIN_ACCESS_TOKEN=your_token_here
+LINKEDIN_VERSION=202609
+```
+
+Never put private tokens into the downloadable installer or commit them to GitHub.
+
+---
+
 ## 20. Useful commands
 
 ### First-time local setup
@@ -665,6 +777,30 @@ npm run ai:check
 npm run dev
 ```
 
+### Open the Electron desktop app in development
+
+```bash
+npm run desktop
+```
+
+### Build the current platform desktop installer
+
+```bash
+npm run desktop:build
+```
+
+### Build macOS DMG
+
+```bash
+npm run desktop:build:mac
+```
+
+### Build Windows EXE
+
+```bash
+npm run desktop:build:win
+```
+
 ### Production build
 
 ```bash
@@ -682,6 +818,10 @@ npm run start
 ## 21. Important project files
 
 ```text
+desktop/
+  main.cjs                       Electron desktop process
+  preload.cjs                    secure desktop preload bridge
+
 app/
   page.tsx                       main UI
   globals.css                    black/yellow visual theme
@@ -708,7 +848,8 @@ public/
     data-with-anurag-logo.png     add this file yourself
 
 scripts/
-  setup-local-ai.sh              one-time local setup
+  setup-local-ai.sh              one-time macOS local setup
+  desktop-dev.cjs                cross-platform desktop dev launcher
   dev-all.sh                     one-command launcher
   check-local-ai.sh              installation diagnostics
 
