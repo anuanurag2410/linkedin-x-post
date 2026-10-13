@@ -432,21 +432,28 @@ export default function Home() {
 
     if (!confirmed) return;
 
-    const connection = await refreshLinkedInStatus();
-
-    if (!connection.connected) {
-      setError(
-        connection.error ||
-          "LinkedIn is not connected. Update the local access token and check again."
-      );
-      return;
-    }
-
-    // Open X immediately while this click still has direct user interaction.
-    // This is more reliable in Electron than waiting for the LinkedIn API first.
+    // Open X before any await so Electron treats it as a direct user action.
     if (openXToo) {
       window.open(buildXIntentUrl(), "_blank", "noopener,noreferrer");
       setXOpened(true);
+    }
+
+    const connection = await refreshLinkedInStatus();
+
+    if (!connection.connected) {
+      const connectionError =
+        connection.error ||
+        "LinkedIn is not connected. Update the local access token and check again.";
+
+      if (openXToo) {
+        setPublishMessage(
+          "X composer opened. LinkedIn is not connected yet."
+        );
+        setError(`X opened successfully, but LinkedIn was not published: ${connectionError}`);
+      } else {
+        setError(connectionError);
+      }
+      return;
     }
 
     setPublishingTarget(openXToo ? "both" : "linkedin");
@@ -511,14 +518,14 @@ export default function Home() {
       if (openXToo) {
         setPublishMessage(
           linkedInResult.imageAttached
-            ? "LinkedIn published with the image. X is open with your approved text — click Post there."
-            : "LinkedIn published successfully. X is open with your approved text — click Post there."
+            ? `LinkedIn published with the image (${linkedInResult.id || "post created"}). X is open with your approved text — click Post there.`
+            : `LinkedIn published successfully (${linkedInResult.id || "post created"}). X is open with your approved text — click Post there.`
         );
       } else {
         setPublishMessage(
           linkedInResult.imageAttached
-            ? "LinkedIn published successfully with the selected image."
-            : "LinkedIn published successfully."
+            ? `LinkedIn published successfully with the selected image. Post ID: ${linkedInResult.id || "created"}`
+            : `LinkedIn published successfully. Post ID: ${linkedInResult.id || "created"}`
         );
       }
     } catch (err) {
