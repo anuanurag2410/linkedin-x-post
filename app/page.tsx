@@ -51,6 +51,13 @@ type SuggestedTopic = {
   angles: string[];
 };
 
+type LinkedInStatus = {
+  checking: boolean;
+  connected: boolean;
+  name: string;
+  error: string;
+};
+
 const fallbackTopicLibrary: SuggestedTopic[] =
   creatorConfig.contentStrategy.topicLibrary.map((item) => ({
     id: item.id,
@@ -94,6 +101,12 @@ export default function Home() {
   const [contextOpen, setContextOpen] = useState(false);
   const [publishingTarget, setPublishingTarget] = useState<"linkedin" | "x" | "both" | null>(null);
   const [publishMessage, setPublishMessage] = useState("");
+  const [linkedinStatus, setLinkedinStatus] = useState<LinkedInStatus>({
+    checking: true,
+    connected: false,
+    name: "",
+    error: "",
+  });
   const [xOpened, setXOpened] = useState(false);
   const [published, setPublished] = useState<ApprovalState>({
     linkedin: false,
@@ -126,6 +139,45 @@ export default function Home() {
     [approval, hasDrafts]
   );
 
+  async function refreshLinkedInStatus() {
+    setLinkedinStatus((current) => ({ ...current, checking: true }));
+
+    try {
+      const response = await fetch("/api/linkedin/status", {
+        method: "GET",
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
+
+      const data = await response.json();
+
+      setLinkedinStatus({
+        checking: false,
+        connected: Boolean(data.connected),
+        name: String(data.name || ""),
+        error: String(data.error || ""),
+      });
+
+      return data;
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "LinkedIn connection check failed.";
+
+      setLinkedinStatus({
+        checking: false,
+        connected: false,
+        name: "",
+        error: message,
+      });
+
+      return {
+        connected: false,
+        name: "",
+        error: message,
+      };
+    }
+  }
+
   async function refreshTopicLibrary() {
     setTopicsLoading(true);
 
@@ -154,6 +206,7 @@ export default function Home() {
 
   useEffect(() => {
     void refreshTopicLibrary();
+    void refreshLinkedInStatus();
   }, []);
 
   async function generate(mode: GenerationMode = "both", presetFeedback = "") {
@@ -379,6 +432,16 @@ export default function Home() {
 
     if (!confirmed) return;
 
+    const connection = await refreshLinkedInStatus();
+
+    if (!connection.connected) {
+      setError(
+        connection.error ||
+          "LinkedIn is not connected. Update the local access token and check again."
+      );
+      return;
+    }
+
     // Open X immediately while this click still has direct user interaction.
     // This is more reliable in Electron than waiting for the LinkedIn API first.
     if (openXToo) {
@@ -443,6 +506,7 @@ export default function Home() {
       }
 
       setPublished((current) => ({ ...current, linkedin: true }));
+      void refreshLinkedInStatus();
 
       if (openXToo) {
         setPublishMessage(
@@ -901,6 +965,32 @@ export default function Home() {
               ? publishMessage
               : "Approve a platform draft to enable its publish button. Editing a draft removes its approval."}
           </span>
+          <div className="linkedin-connection">
+            <span
+              className={
+                linkedinStatus.connected
+                  ? "linkedin-connected"
+                  : "linkedin-disconnected"
+              }
+            >
+              {linkedinStatus.checking
+                ? "Checking LinkedIn…"
+                : linkedinStatus.connected
+                  ? `LinkedIn connected${linkedinStatus.name ? ` as ${linkedinStatus.name}` : ""}`
+                  : "LinkedIn not connected"}
+            </span>
+            <button
+              type="button"
+              onClick={() => void refreshLinkedInStatus()}
+              disabled={linkedinStatus.checking}
+            >
+              <RefreshCw size={12} className={linkedinStatus.checking ? "spin" : ""} />
+              Check
+            </button>
+          </div>
+          {!linkedinStatus.connected && !linkedinStatus.checking && linkedinStatus.error ? (
+            <small className="linkedin-error">{linkedinStatus.error}</small>
+          ) : null}
         </div>
 
         <div className="publish-actions">
