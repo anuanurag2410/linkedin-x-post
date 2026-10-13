@@ -4,7 +4,7 @@
 
 | Platform | Installer |
 | --- | --- |
-| **macOS** | [Download Post Studio (.dmg)](https://github.com/anuanurag2410/linkedin-x-post/releases/latest/download/Post-Studio-macOS.dmg) |
+| **macOS (Apple Silicon M1/M2/M3/M4+)** | [Download Post Studio (.dmg)](https://github.com/anuanurag2410/linkedin-x-post/releases/latest/download/Post-Studio-macOS.dmg) |
 | **Windows** | [Download Post Studio (.exe)](https://github.com/anuanurag2410/linkedin-x-post/releases/latest/download/Post-Studio-Windows.exe) |
 
 > The download links become active after the first GitHub Release is published. The desktop app is currently unsigned, so macOS Gatekeeper or Windows SmartScreen may show a first-launch warning.
@@ -679,11 +679,13 @@ This starts Ollama when needed, starts the Next.js development server and opens 
 
 ### Build an installer locally
 
-On macOS:
+On Apple Silicon macOS:
 
 ```bash
 npm run desktop:build:mac
 ```
+
+The macOS build intentionally targets `arm64` instead of a universal binary. Next.js includes architecture-specific native Sharp modules, and per-architecture Electron builds are more reliable than merging those native modules into one universal app.
 
 Output:
 
@@ -722,7 +724,7 @@ git push origin v0.1.0
 
 GitHub Actions will:
 
-1. build the universal macOS DMG on macOS
+1. build the Apple Silicon macOS DMG on an ARM64 macOS runner
 2. build the Windows x64 installer on Windows
 3. upload both build artifacts
 4. create/update the GitHub Release
