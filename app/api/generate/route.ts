@@ -108,6 +108,7 @@ export async function POST(request: Request) {
         : await generateWithOllama({
             system: instructions,
             user: input,
+            timeoutMs: 90000,
           });
 
     let parsed = extractJson(raw);
@@ -175,6 +176,7 @@ export async function POST(request: Request) {
           : await generateWithOllama({
               system: recoveryInstructions,
               user: recoveryInput,
+              timeoutMs: 45000,
             });
 
       const recoveredParsed = extractJson(raw);
@@ -264,6 +266,8 @@ export async function POST(request: Request) {
     ) {
       message =
         "OpenAI API credits are unavailable. Switch AI_PROVIDER to ollama for free local generation.";
+    } else if (rawMessage.includes("Ollama timed out")) {
+      message = rawMessage;
     } else if (
       rawMessage.includes("JSON") ||
       rawMessage.includes("Unexpected token")
