@@ -8,6 +8,7 @@ const isDev = process.argv.includes("--dev");
 const repoRoot = path.resolve(__dirname, "..");
 
 let mainWindow = null;
+let appUrl = null;
 let nextProcess = null;
 let ollamaProcess = null;
 
@@ -294,6 +295,8 @@ function installApplicationMenu() {
 }
 
 function createWindow(url) {
+  appUrl = url;
+
   mainWindow = new BrowserWindow({
     width: 1440,
     height: 940,
@@ -330,6 +333,10 @@ function createWindow(url) {
         void shell.openExternal(targetUrl);
       }
     }
+  });
+
+  mainWindow.on("closed", () => {
+    mainWindow = null;
   });
 
   void mainWindow.loadURL(url);
@@ -393,9 +400,9 @@ app.whenReady().then(async () => {
     app.quit();
   }
 
-  app.on("activate", async () => {
-    if (BrowserWindow.getAllWindows().length === 0 && mainWindow) {
-      createWindow(mainWindow.webContents.getURL());
+  app.on("activate", () => {
+    if (BrowserWindow.getAllWindows().length === 0 && appUrl) {
+      createWindow(appUrl);
     }
   });
 });
