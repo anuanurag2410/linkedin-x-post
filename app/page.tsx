@@ -300,6 +300,7 @@ export default function Home() {
       const response = await fetch("/api/generate", {
         method: "POST",
         cache: "no-store",
+        signal: AbortSignal.timeout(120000),
         headers: {
           "Content-Type": "application/json",
           "Cache-Control": "no-cache",
@@ -340,7 +341,15 @@ export default function Home() {
         });
       }, 50);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Generation failed.");
+      const message =
+        err instanceof Error &&
+        (err.name === "TimeoutError" || err.name === "AbortError")
+          ? "Generation took too long and was stopped. Ollama may still be loading or busy. Try Generate once more."
+          : err instanceof Error
+            ? err.message
+            : "Generation failed.";
+
+      setError(message);
     } finally {
       setLoadingMode(null);
     }
