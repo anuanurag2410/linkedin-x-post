@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, shell } = require("electron");
+const { app, BrowserWindow, dialog, Menu, shell } = require("electron");
 const { spawn } = require("child_process");
 const fs = require("fs");
 const net = require("net");
@@ -12,18 +12,30 @@ let nextProcess = null;
 let ollamaProcess = null;
 
 function withDesktopPath(env) {
-  const additions = [
-    "/opt/homebrew/bin",
-    "/usr/local/bin",
-    "/usr/bin",
-    "/bin",
-    "/usr/sbin",
-    "/sbin",
-  ];
+  const additions =
+    process.platform === "win32"
+      ? [
+          env.LOCALAPPDATA
+            ? path.join(env.LOCALAPPDATA, "Programs", "Ollama")
+            : "",
+          env.ProgramFiles
+            ? path.join(env.ProgramFiles, "Ollama")
+            : "",
+        ]
+      : [
+          "/opt/homebrew/bin",
+          "/usr/local/bin",
+          "/usr/bin",
+          "/bin",
+          "/usr/sbin",
+          "/sbin",
+        ];
 
   return {
     ...env,
-    PATH: [...additions, env.PATH || ""].filter(Boolean).join(":"),
+    PATH: [...additions, env.PATH || ""]
+      .filter(Boolean)
+      .join(path.delimiter),
   };
 }
 
@@ -237,6 +249,50 @@ async function startPackagedNextServer(env) {
   return url;
 }
 
+function installApplicationMenu() {
+  const configFolder = isDev ? repoRoot : app.getPath("userData");
+
+  const template = [
+    {
+      label: "Post Studio",
+      submenu: [
+        {
+          label: "Open Local Config Folder",
+          click: () => {
+            void shell.openPath(configFolder);
+          },
+        },
+        {
+          label: "Open Logs Folder",
+          click: () => {
+            const logs = path.join(app.getPath("userData"), "logs");
+            fs.mkdirSync(logs, { recursive: true });
+            void shell.openPath(logs);
+          },
+        },
+        { type: "separator" },
+        process.platform === "darwin"
+          ? { role: "quit" }
+          : { role: "close" },
+      ],
+    },
+    {
+      label: "Edit",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "selectAll" },
+      ],
+    },
+  ];
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
 function createWindow(url) {
   mainWindow = new BrowserWindow({
     width: 1440,
@@ -293,6 +349,9 @@ function stopChildProcesses() {
 }
 
 app.whenReady().then(async () => {
+  app.setAppUserModelId("com.datawithanurag.poststudio");
+  installApplicationMenu();
+
   try {
     let url;
 
