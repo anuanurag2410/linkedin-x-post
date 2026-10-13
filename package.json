@@ -12,7 +12,7 @@
     "dev:all": "bash scripts/dev-all.sh",
     "desktop": "npm run check:node && node scripts/desktop-dev.cjs",
     "desktop:build": "npm run check:node && npm run build && electron-builder --publish never",
-    "desktop:build:mac": "npm run check:node && npm run build && electron-builder --mac dmg --universal --publish never",
+    "desktop:build:mac": "npm run check:node && npm run build && electron-builder --mac dmg --arm64 --publish never",
     "desktop:build:win": "npm run check:node && npm run build && electron-builder --win nsis --x64 --publish never",
     "check:node": "node scripts/check-node.cjs"
   },
@@ -68,12 +68,12 @@
         {
           "target": "dmg",
           "arch": [
-            "universal"
+            "arm64"
           ]
         }
       ],
       "icon": "public/brand/data-with-anurag-logo.png",
-      "artifactName": "Post-Studio-macOS.${ext}"
+      "artifactName": "Post-Studio-macOS-Apple-Silicon.${ext}"
     },
     "win": {
       "target": [
