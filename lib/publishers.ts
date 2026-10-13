@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "fs";
+
 export type PublishResult = {
   platform: "linkedin" | "x";
   success: boolean;
@@ -11,8 +13,56 @@ type LinkedInImage = {
   altText?: string;
 };
 
+function parseEnvFile(filePath: string) {
+  const values: Record<string, string> = {};
+
+  if (!filePath || !existsSync(filePath)) return values;
+
+  for (const rawLine of readFileSync(filePath, "utf8").split(/\r?\n/)) {
+    const line = rawLine.trim();
+
+    if (!line || line.startsWith("#")) continue;
+
+    const index = line.indexOf("=");
+    if (index <= 0) continue;
+
+    const key = line.slice(0, index).trim();
+    let value = line.slice(index + 1).trim();
+
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+
+    values[key] = value;
+  }
+
+  return values;
+}
+
 function env(name: string) {
+  const desktopEnvFile = process.env.POST_STUDIO_ENV_FILE?.trim() || "";
+
+  if (desktopEnvFile) {
+    const liveValues = parseEnvFile(desktopEnvFile);
+    if (liveValues[name]?.trim()) return liveValues[name].trim();
+  }
+
   return process.env[name]?.trim() || "";
+}
+
+function validateLinkedInAccessToken(accessToken: string) {
+  if (!accessToken) {
+    return "LinkedIn is not configured. Add LINKEDIN_ACCESS_TOKEN to your local .env.local.";
+  }
+
+  if (/^WPL_API/i.test(accessToken)) {
+    return "This LINKEDIN_ACCESS_TOKEN looks like a LinkedIn Client Secret (WPL_API...). Use a member access token from LinkedIn's OAuth Token Generator instead.";
+  }
+
+  return "";
 }
 
 function safeErrorDetail(raw: string) {
@@ -30,7 +80,10 @@ function safeErrorDetail(raw: string) {
   }
 }
 
-async function resolveLinkedInAuthor(accessToken: string) {
+async function fetchLinkedInUserInfo(accessToken: string) {
+  const tokenError = validateLinkedInAccessToken(accessToken);
+  if (tokenError) throw new Error(tokenError);
+
   const response = await fetch("https://api.linkedin.com/v2/userinfo", {
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -61,7 +114,54 @@ async function resolveLinkedInAuthor(accessToken: string) {
     );
   }
 
-  return `urn:li:person:${subject}`;
+  return {
+    subject,
+    name: String(data?.name || "").trim(),
+    givenName: String(data?.given_name || "").trim(),
+    familyName: String(data?.family_name || "").trim(),
+  };
+}
+
+async function resolveLinkedInAuthor(accessToken: string) {
+  const user = await fetchLinkedInUserInfo(accessToken);
+  return `urn:li:person:${user.subject}`;
+}
+
+export async function getLinkedInConnectionStatus() {
+  const accessToken = env("LINKEDIN_ACCESS_TOKEN");
+  const tokenError = validateLinkedInAccessToken(accessToken);
+
+  if (tokenError) {
+    return {
+      configured: Boolean(accessToken),
+      connected: false,
+      name: "",
+      error: tokenError,
+    };
+  }
+
+  try {
+    const user = await fetchLinkedInUserInfo(accessToken);
+
+    return {
+      configured: true,
+      connected: true,
+      name:
+        user.name ||
+        [user.givenName, user.familyName].filter(Boolean).join(" "),
+      error: "",
+    };
+  } catch (error) {
+    return {
+      configured: true,
+      connected: false,
+      name: "",
+      error:
+        error instanceof Error
+          ? error.message
+          : "LinkedIn connection check failed.",
+    };
+  }
 }
 
 function decodeDataUrl(dataUrl: string) {
@@ -170,12 +270,13 @@ export async function publishLinkedIn(
   const accessToken = env("LINKEDIN_ACCESS_TOKEN");
   const version = env("LINKEDIN_VERSION") || "202609";
 
-  if (!accessToken) {
+  const tokenError = validateLinkedInAccessToken(accessToken);
+
+  if (tokenError) {
     return {
       platform: "linkedin",
       success: false,
-      error:
-        "LinkedIn is not configured. Add LINKEDIN_ACCESS_TOKEN to .env.local.",
+      error: tokenError,
     };
   }
 
