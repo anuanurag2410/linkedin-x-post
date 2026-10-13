@@ -60,8 +60,23 @@ export async function POST(request: Request) {
 
     const failed = results.filter((item) => !item.success);
 
+    if (failed.length > 0) {
+      return NextResponse.json(
+        {
+          error:
+            failed[0]?.error ||
+            "LinkedIn publishing failed for an unknown reason.",
+          allSucceeded: false,
+          partialSuccess: false,
+          results,
+          warning: null,
+        },
+        { status: 502 }
+      );
+    }
+
     return NextResponse.json({
-      allSucceeded: failed.length === 0,
+      allSucceeded: true,
       partialSuccess: false,
       results,
       warning: null,
