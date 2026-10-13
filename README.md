@@ -198,7 +198,7 @@ bash scripts/setup-local-ai.sh
 The script will:
 
 1. check macOS/Homebrew
-2. check/install Node.js 22+
+2. check/install Node.js 22.12+
 3. install Ollama
 4. install Draw Things CLI
 5. run `npm install`
@@ -861,6 +861,51 @@ REQUIREMENTS.md                  compact requirements reference
 ---
 
 ## 22. Troubleshooting
+
+### Electron fails with `ERR_REQUIRE_ESM`
+
+If Electron installation shows an error involving `@electron/get`, first check:
+
+```bash
+node -v
+```
+
+Post Studio Desktop requires:
+
+```text
+Node.js >= 22.12.0
+```
+
+On Apple Silicon macOS:
+
+```bash
+brew install node@22
+export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
+node -v
+```
+
+If you want Homebrew Node 22 to remain first on PATH in new Terminal sessions:
+
+```bash
+echo 'export PATH="/opt/homebrew/opt/node@22/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+Then reinstall the project dependencies with the correct Node version:
+
+```bash
+rm -rf node_modules
+npm install
+npm run desktop
+```
+
+If a previous failed `npx electron` download is still being reused, clear only the temporary npx cache and retry:
+
+```bash
+rm -rf ~/.npm/_npx
+npm install
+npm run desktop
+```
 
 ### Ollama is not reachable
 
