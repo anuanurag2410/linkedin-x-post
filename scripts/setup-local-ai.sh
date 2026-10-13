@@ -21,19 +21,29 @@ if ! command -v brew >/dev/null 2>&1; then
 fi
 
 say "1/7 Checking Node.js"
-NODE_MAJOR=0
+NODE_OK=0
 if command -v node >/dev/null 2>&1; then
-  NODE_MAJOR="$(node -p 'Number(process.versions.node.split(".")[0])')"
+  if node -e 'const [a,b]=process.versions.node.split(".").map(Number); process.exit(a > 22 || (a === 22 && b >= 12) ? 0 : 1)'; then
+    NODE_OK=1
+  fi
 fi
 
-if [[ "$NODE_MAJOR" -lt 22 ]]; then
-  echo "Node 22+ is required. Installing node@22..."
-  brew install node@22 || brew upgrade node@22
+if [[ "$NODE_OK" -ne 1 ]]; then
+  echo "Node 22.12+ is required for the Electron desktop build. Installing node@22..."
+  brew install node@22 || brew upgrade node@22 || true
+
   if [[ -d "/opt/homebrew/opt/node@22/bin" ]]; then
     export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
   elif [[ -d "/usr/local/opt/node@22/bin" ]]; then
     export PATH="/usr/local/opt/node@22/bin:$PATH"
   fi
+fi
+
+if ! node -e 'const [a,b]=process.versions.node.split(".").map(Number); process.exit(a > 22 || (a === 22 && b >= 12) ? 0 : 1)'; then
+  echo "Node is still below 22.12.0."
+  echo "Add Homebrew Node 22 to your shell PATH and reopen Terminal:"
+  echo '  export PATH="/opt/homebrew/opt/node@22/bin:$PATH"'
+  exit 1
 fi
 
 node --version
