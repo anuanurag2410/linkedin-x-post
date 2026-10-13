@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "fs";
+import path from "path";
 
 export type PublishResult = {
   platform: "linkedin" | "x";
@@ -43,10 +44,12 @@ function parseEnvFile(filePath: string) {
 }
 
 function env(name: string) {
-  const desktopEnvFile = process.env.POST_STUDIO_ENV_FILE?.trim() || "";
+  const configuredEnvFile =
+    process.env.POST_STUDIO_ENV_FILE?.trim() ||
+    path.join(process.cwd(), ".env.local");
 
-  if (desktopEnvFile) {
-    const liveValues = parseEnvFile(desktopEnvFile);
+  if (configuredEnvFile) {
+    const liveValues = parseEnvFile(configuredEnvFile);
     if (liveValues[name]?.trim()) return liveValues[name].trim();
   }
 
