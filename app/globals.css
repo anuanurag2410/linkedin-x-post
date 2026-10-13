@@ -1154,3 +1154,55 @@ button:disabled { cursor: not-allowed; }
     max-height: 280px;
   }
 }
+
+
+.linkedin-config-panel {
+  display: grid;
+  gap: 8px;
+  max-width: 620px;
+  margin-top: 9px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #0b0b0b;
+}
+
+.linkedin-config-panel strong {
+  font-size: 10px;
+}
+
+.linkedin-config-panel span {
+  margin: 0 !important;
+  color: #777 !important;
+  font-size: 9px !important;
+}
+
+.linkedin-config-panel input {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: 0;
+  background: #111;
+  color: #f1f1f1;
+  font-size: 11px;
+}
+
+.linkedin-config-panel input:focus {
+  border-color: var(--yellow-border);
+  box-shadow: 0 0 0 3px rgba(246,201,21,.05);
+}
+
+.linkedin-config-panel button {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 9px;
+  border: 1px solid var(--yellow-border);
+  border-radius: 8px;
+  background: var(--yellow-soft);
+  color: var(--yellow);
+  font-size: 10px;
+  font-weight: 800;
+}
