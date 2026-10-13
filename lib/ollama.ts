@@ -27,11 +27,13 @@ export async function generateWithOllama({
   user,
   format = SOCIAL_DRAFT_SCHEMA,
   temperature = 0.45,
+  timeoutMs = 90000,
 }: {
   system: string;
   user: string;
   format?: object | "json";
   temperature?: number;
+  timeoutMs?: number;
 }) {
   const baseUrl = (process.env.OLLAMA_BASE_URL || DEFAULT_OLLAMA_URL).replace(/\/$/, "");
   const model = process.env.OLLAMA_MODEL || DEFAULT_OLLAMA_MODEL;
@@ -40,10 +42,12 @@ export async function generateWithOllama({
     const response = await fetch(`${baseUrl}/api/chat`, {
       method: "POST",
       cache: "no-store",
+      signal: AbortSignal.timeout(timeoutMs),
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model,
         stream: false,
+        keep_alive: process.env.OLLAMA_KEEP_ALIVE || "15m",
         format,
         messages: [
           { role: "system", content: system },
@@ -52,6 +56,7 @@ export async function generateWithOllama({
         options: {
           temperature,
           top_p: 0.9,
+          num_predict: 1200,
         },
       }),
     });
@@ -70,6 +75,17 @@ export async function generateWithOllama({
 
     return content;
   } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.name === "TimeoutError" ||
+        error.name === "AbortError" ||
+        error.message.toLowerCase().includes("timed out"))
+    ) {
+      throw new Error(
+        `Ollama timed out after ${Math.round(timeoutMs / 1000)} seconds. The model may be busy or still loading. Try again once; if it repeats, restart Ollama.`
+      );
+    }
+
     if (
       error instanceof TypeError ||
       (error instanceof Error && error.message.toLowerCase().includes("fetch failed"))
